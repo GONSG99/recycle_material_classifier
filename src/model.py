@@ -6,10 +6,10 @@ from torchvision import models
 def build_model(num_classes: int, freeze_backbone: bool, device: torch.device) -> nn.Module:
     """ResNet-18 transfer learning; replace final FC with num_classes."""
     try:
-        weights = models.ResNet18_Weights.IMAGENET1K_V1  # newer torchvision
+        weights = models.ResNet18_Weights.IMAGENET1K_V1  
         model = models.resnet18(weights=weights)
     except Exception:
-        model = models.resnet18(pretrained=True)         # older API
+        model = models.resnet18(pretrained=True)         
 
     if freeze_backbone:
         for p in model.parameters():

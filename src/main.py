@@ -1,6 +1,6 @@
 # src/main.py
-# Run:
-# python -m venv .venv && . .venv\Scripts\activate
+# How I run this:
+# python -m venv .venv && .\.venv\Scripts\Activate
 # pip install -r requirements.txt
 # python src\main.py --data data\images --epochs 10 --bs 32 --lr 1e-3
 
@@ -10,12 +10,12 @@ from typing import Dict
 import numpy as np
 import torch
 
-from data import load_data
-from model import build_model
-from train import train_model
-from eval import eval_on_test
+from data import load_data          
+from model import build_model       
+from train import train_model       
+from eval import eval_on_test       
 
-# ==== small helpers ====
+
 def set_seed(seed: int = 42):
     random.seed(seed); np.random.seed(seed)
     torch.manual_seed(seed); torch.cuda.manual_seed_all(seed)
@@ -46,20 +46,16 @@ def main():
     device = get_device()
     print("Device:", device)
 
-    # data
     out = load_data(args.data, args.bs)
     dsets, loaders = out["dsets"], out["loaders"]
     class_names = [k for k, _ in sorted(dsets["train"].class_to_idx.items(), key=lambda x: x[1])]
     print("Classes:", class_names)
 
-    # model
     model = build_model(num_classes=len(class_names), freeze_backbone=args.freeze, device=device)
 
-    # train
     model, best_val = train_model(model, loaders, epochs=args.epochs, lr=args.lr, device=device)
     print(f"Best val acc: {best_val:.4f}")
 
-    # test
     eval_on_test(model, loaders["test"], class_names, device)
 
 if __name__ == "__main__":

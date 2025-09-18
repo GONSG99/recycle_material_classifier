@@ -30,7 +30,7 @@ def load_data(data_root: str, bs: int, num_workers: int = 2) -> Dict:
         "val":   datasets.ImageFolder(os.path.join(data_root, "val"),   transform=eval_tf),
         "test":  datasets.ImageFolder(os.path.join(data_root, "test"),  transform=eval_tf),
     }
-    # Save idx->class for app/poster
+
     Path("models").mkdir(parents=True, exist_ok=True)
     with open("models/labels.json", "w") as f:
         json.dump({v: k for k, v in dsets["train"].class_to_idx.items()}, f, indent=2)

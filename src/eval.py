@@ -12,9 +12,8 @@ def _plot_confusion_matrix(cm: np.ndarray, class_names: List[str], title: str,
     """Matplotlib heatmap (no seaborn). Saves a nice PNG."""
     cm = np.array(cm)
     fig, ax = plt.subplots(figsize=(7, 6))
-    im = ax.imshow(cm)  # default colormap works; we avoid specifying colors per your rules
+    im = ax.imshow(cm)  
 
-    # ticks and labels
     ax.set_xticks(range(len(class_names)))
     ax.set_yticks(range(len(class_names)))
     ax.set_xticklabels(class_names, rotation=45, ha="right")
@@ -23,12 +22,10 @@ def _plot_confusion_matrix(cm: np.ndarray, class_names: List[str], title: str,
     ax.set_ylabel("True label")
     ax.set_title(title)
 
-    # write counts in cells
     for i in range(cm.shape[0]):
         for j in range(cm.shape[1]):
             ax.text(j, i, str(cm[i, j]), ha="center", va="center")
 
-    # colorbar
     cbar = fig.colorbar(im, ax=ax)
     cbar.ax.set_ylabel("counts")
 
