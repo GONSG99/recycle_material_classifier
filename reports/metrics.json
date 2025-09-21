@@ -1,52 +1,52 @@
 {
   "classification_report": {
     "metal": {
-      "precision": 1.0,
-      "recall": 1.0,
-      "f1-score": 1.0,
-      "support": 2.0
+      "precision": 0.9649122807017544,
+      "recall": 0.8870967741935484,
+      "f1-score": 0.9243697478991597,
+      "support": 62.0
     },
     "paper": {
-      "precision": 1.0,
-      "recall": 1.0,
-      "f1-score": 1.0,
-      "support": 2.0
+      "precision": 0.9887640449438202,
+      "recall": 0.9777777777777777,
+      "f1-score": 0.9832402234636871,
+      "support": 90.0
     },
     "plastic": {
-      "precision": 1.0,
-      "recall": 1.0,
-      "f1-score": 1.0,
-      "support": 2.0
+      "precision": 0.8860759493670886,
+      "recall": 0.958904109589041,
+      "f1-score": 0.9210526315789473,
+      "support": 73.0
     },
-    "accuracy": 1.0,
+    "accuracy": 0.9466666666666667,
     "macro avg": {
-      "precision": 1.0,
-      "recall": 1.0,
-      "f1-score": 1.0,
-      "support": 6.0
+      "precision": 0.9465840916708878,
+      "recall": 0.9412595538534557,
+      "f1-score": 0.9428875343139315,
+      "support": 225.0
     },
     "weighted avg": {
-      "precision": 1.0,
-      "recall": 1.0,
-      "f1-score": 1.0,
-      "support": 6.0
+      "precision": 0.948874976676667,
+      "recall": 0.9466666666666667,
+      "f1-score": 0.9468417181633018,
+      "support": 225.0
     }
   },
   "confusion_matrix": [
     [
-      2,
+      55,
       0,
-      0
+      7
     ],
     [
       0,
-      2,
-      0
-    ],
-    [
-      0,
-      0,
+      88,
       2
+    ],
+    [
+      2,
+      1,
+      70
     ]
   ]
 }
