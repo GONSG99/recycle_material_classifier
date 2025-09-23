@@ -7,6 +7,11 @@ import gradio as gr
 from model import build_model
 
 # ---- paths ----
+EXAMPLES = [
+    ["examples/paper.jpg"],
+    ["examples/plastic.jpg"],
+    ["examples/metal.jpg"],
+]
 WEIGHTS = Path("models/resnet18_best.pt")
 LABELS  = Path("models/labels.json")
 
@@ -39,24 +44,55 @@ def predict(img: Image.Image):
     top = max(scores, key=scores.get)
     return {"label": top, "conf": round(scores[top]*100, 2)}, scores
 
+def classify_image(img: Image.Image):
+    """Wrapper function to format predictions for the new Gradio UI."""
+    if img is None:
+        return "N/A", "N/A", {}
+        
+    top_pred, all_scores = predict(img)
+    
+    # Return values formatted for the new output components
+    return top_pred["label"], f"{top_pred['conf']}%", all_scores
+
 # ---- minimal CSS: hide branding/footer ----
 css = """
 footer, #footer, .footer, [data-testid="branding"] {display:none !important;}
 a[href*="gradio.app"] {display:none !important;}
 """
 
-demo = gr.Interface(
-    fn=predict,
-    inputs=gr.Image(type="pil", label="Upload an image"),
-    outputs=[
-        gr.JSON(label="Prediction (top class + confidence %)"),
-        gr.Label(num_top_classes=3, label="Top-3 probabilities")
-    ],
-    title="Recycle Material Classifier",
-    description="Upload a photo → get paper / plastic / metal + confidence",
-    allow_flagging="never",
-    css=css,
-)
+# ---- New Gradio Blocks UI ----
+with gr.Blocks(theme=gr.themes.Soft(), css=css) as demo:
+    gr.Markdown("<h1>♻️ Recycle Material Classifier</h1>")
+    gr.Markdown("Upload a photo of a recyclable item to classify it as **paper**, **plastic**, or **metal**.")
+    
+    with gr.Row(variant="panel"):
+        # --- Input Column ---
+        with gr.Column(scale=1):
+            image_input = gr.Image(
+                type="pil", 
+                label="Upload Image",
+                height=350
+            )
+            gr.Examples(
+                examples=EXAMPLES,
+                inputs=image_input,
+                label="Click an example to try it out!"
+            )
+            submit_btn = gr.Button("Classify", variant="primary")
+
+        # --- Output Column ---
+        with gr.Column(scale=1):
+            gr.Markdown("<h2>Results</h2>")
+            predicted_label = gr.Textbox(label="Predicted Material", interactive=False)
+            confidence_score = gr.Textbox(label="Confidence", interactive=False)
+            all_scores_label = gr.Label(num_top_classes=3, label="All Confidence Scores")
+
+    # --- Button Logic ---
+    submit_btn.click(
+        fn=classify_image,
+        inputs=image_input,
+        outputs=[predicted_label, confidence_score, all_scores_label]
+    )
 
 if __name__ == "__main__":
     demo.launch(inbrowser=True)
