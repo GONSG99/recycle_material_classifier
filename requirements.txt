@@ -4,5 +4,5 @@ scikit-learn
 pillow
 matplotlib
 gradio #latest ver
-cv2
-threading
+opencv-python
+numpy
