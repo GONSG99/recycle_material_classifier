@@ -1,4 +1,3 @@
-# src/app.py
 import json, torch
 from pathlib import Path
 from PIL import Image
@@ -11,25 +10,20 @@ import time
 
 stop_flag = False  # global flag to stop the thread
 
-# ---- paths ----
 WEIGHTS = Path("models/resnet18_best.pt")
 LABELS  = Path("models/labels.json")
 
-# ---- device ----
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# ---- labels ----
 with open(LABELS) as f:
     idx2name = {int(k): v for k, v in json.load(f).items()}
 class_names = [idx2name[i] for i in sorted(idx2name.keys())]
 
-# ---- model ----
 model = build_model(num_classes=len(class_names), freeze_backbone=False, device=device)
 state = torch.load(WEIGHTS, map_location=device)
 model.load_state_dict(state)
 model.eval()
 
-# ---- transforms (same as eval) ----
 tfm = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
@@ -44,6 +38,7 @@ def predict(img: Image.Image):
     top = max(scores, key=scores.get)
     return {"label": top, "conf": round(scores[top]*100, 2)}, scores
 
+<<<<<<< HEAD
 
 # ---- IP Webcam setup ----
 #ip_url = "http://10.132.39.118:8080/video"  # replace with your phone's IP
@@ -106,6 +101,8 @@ def live_ipcam_generator():
 
         time.sleep(0.1)  # pause 100ms between frames
 
+=======
+>>>>>>> e3250e4730da9544e4bd012789c9c4869bf00b54
 # ---- minimal CSS: hide branding/footer ----
 css = """
 footer, #footer, .footer, [data-testid="branding"] {display:none !important;}

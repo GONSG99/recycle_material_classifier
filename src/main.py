@@ -1,8 +1,7 @@
-# src/main.py
 # How I run this:
 # python -m venv .venv && .\.venv\Scripts\Activate
 # pip install -r requirements.txt
-# python src\main.py --data data\images --epochs 10 --bs 32 --lr 1e-3
+# python src/main.py --data data/combined --epochs 15 --lr 3e-
 
 import argparse, random
 from pathlib import Path
