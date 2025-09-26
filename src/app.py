@@ -46,10 +46,10 @@ def predict(img: Image.Image):
 
 
 # ---- IP Webcam setup ----
-ip_url = "http://10.132.39.118:8080/video"  # replace with your phone's IP
-cap = cv2.VideoCapture(ip_url)
-ret, prev = cap.read()
-prev_gray = cv2.cvtColor(prev, cv2.COLOR_BGR2GRAY)
+#ip_url = "http://10.132.39.118:8080/video"  # replace with your phone's IP
+#cap = cv2.VideoCapture(ip_url)
+#ret, prev = cap.read()
+#prev_gray = cv2.cvtColor(prev, cv2.COLOR_BGR2GRAY)
 
 def live_ipcam_stream():
     global prev_gray
