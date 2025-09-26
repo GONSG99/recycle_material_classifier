@@ -1,32 +1,33 @@
-import os, re, shutil, random
+import os, shutil, random
 from pathlib import Path
 import kagglehub
 
-# Classes to detect from any parent folder name:
-CLASS_NAMES = {"cardboard","glass","metal","paper","plastic","trash"}
+CLASS_KEEP = {"paper", "plastic", "metal"}
+TO_OTHERS  = {"glass", "cardboard", "trash"}
 
 TARGET = Path("data/images")
 SPLITS = {"train":0.7,"val":0.15,"test":0.15}
 IMG_EXTS = (".jpg",".jpeg",".png",".bmp",".webp")
 random.seed(42)
 
-def infer_class(path: Path):
+def infer_class(path: Path) -> str:
     parts = [p.lower() for p in path.parts]
-    for p in reversed(parts):               
-        if p in CLASS_NAMES:
+    for p in reversed(parts):
+        if p in CLASS_KEEP:
             return p
-    return None
+        if p in TO_OTHERS:
+            return "others"
+    return "others"  # default catch-all
 
 def gather_images(root: Path):
     imgs = []
     for fp in root.rglob("*"):
         if fp.suffix.lower() in IMG_EXTS:
             cls = infer_class(fp.parent)
-            if cls: imgs.append((fp, cls))
+            imgs.append((fp, cls))
     return imgs
 
 def split_and_copy(items):
-    # items: list of (filepath, class)
     by_cls = {}
     for fp, cls in items:
         by_cls.setdefault(cls, []).append(fp)
@@ -49,8 +50,8 @@ def main():
 
     items = gather_images(root)
     if not items:
-        raise SystemExit("No images found with class in path. Check CLASS_NAMES or dataset layout.")
-    print(f"Found {len(items)} images across classes:", sorted({c for _, c in items}))
+        raise SystemExit("No images found. Check dataset layout.")
+    print("Classes detected:", sorted({c for _, c in items}))
 
     split_and_copy(items)
     print("Flattened dataset ready in:", TARGET)

@@ -64,19 +64,19 @@ with gr.Blocks(css=css) as demo:
         #     label_out_cam = gr.Label(num_top_classes=3, label="Top-3 probabilities")
         #     webcam_input.change(predict, inputs=webcam_input, outputs=[json_out_cam, label_out_cam])
 
-        # --- Live IP Webcam ---
-        with gr.TabItem("Live IP Webcam"):
-            json_out_live = gr.JSON(label="Prediction (top class + confidence %)")
-            label_out_live = gr.Label(num_top_classes=3, label="Top-3 probabilities")
-            start_btn = gr.Button("Start Live Feed")
-            stop_btn  = gr.Button("Stop Live Feed")
+        # # --- Live IP Webcam ---
+        # with gr.TabItem("Live IP Webcam"):
+        #     json_out_live = gr.JSON(label="Prediction (top class + confidence %)")
+        #     label_out_live = gr.Label(num_top_classes=3, label="Top-3 probabilities")
+        #     start_btn = gr.Button("Start Live Feed")
+        #     stop_btn  = gr.Button("Stop Live Feed")
 
-            # Start the generator when the button is clicked
-            start_btn.click(
-                live_ipcam_generator,
-                inputs=[],
-                outputs=[json_out_live, label_out_live]
-            )
+        #     # Start the generator when the button is clicked
+        #     start_btn.click(
+        #         live_ipcam_generator,
+        #         inputs=[],
+        #         outputs=[json_out_live, label_out_live]
+        #     )
 
     # Stop button can just close the browser tab or set a global stop flag
 

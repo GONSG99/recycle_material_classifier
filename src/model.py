@@ -23,5 +23,5 @@ def build_model(num_classes: int, freeze_backbone: bool, device: torch.device) -
     in_feats = model.fc.in_features
     model.fc = nn.Linear(in_feats, num_classes)
     model.to(device)
-
-    return model
+    
+    return model    

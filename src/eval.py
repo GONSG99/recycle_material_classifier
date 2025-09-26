@@ -1,17 +1,23 @@
 import json
 from pathlib import Path
 from typing import Dict, List
+
 import numpy as np
 import torch
 from sklearn.metrics import classification_report, confusion_matrix
 import matplotlib.pyplot as plt
 
-def _plot_confusion_matrix(cm: np.ndarray, class_names: List[str], title: str,
-                           outpath: str = "reports/confusion_matrix.png"):
+
+def _plot_confusion_matrix(
+    cm: np.ndarray,
+    class_names: List[str],
+    title: str,
+    outpath: str = "reports/confusion_matrix.png",
+):
     """Matplotlib heatmap (no seaborn). Saves a nice PNG."""
     cm = np.array(cm)
     fig, ax = plt.subplots(figsize=(7, 6))
-    im = ax.imshow(cm)  
+    im = ax.imshow(cm)
 
     ax.set_xticks(range(len(class_names)))
     ax.set_yticks(range(len(class_names)))
@@ -33,10 +39,12 @@ def _plot_confusion_matrix(cm: np.ndarray, class_names: List[str], title: str,
     plt.savefig(outpath, dpi=200)
     plt.close(fig)
 
+
 def eval_on_test(model, loader, class_names: List[str], device) -> Dict:
-    """Prints report + confusion matrix; saves JSON + PNG."""
+    """Runs test set, prints report + confusion matrix; saves JSON + PNG."""
     model.eval()
     y_true, y_pred = [], []
+
     with torch.no_grad():
         for xb, yb in loader:
             xb = xb.to(device, non_blocking=True)
@@ -46,10 +54,17 @@ def eval_on_test(model, loader, class_names: List[str], device) -> Dict:
 
     print("\n=== Classification Report ===")
     print(classification_report(y_true, y_pred, target_names=class_names, digits=4))
-    cm = confusion_matrix(y_true, y_pred)
+
+    labels = list(range(len(class_names)))
+    cm = confusion_matrix(y_true, y_pred, labels=labels)
     print("Confusion Matrix:\n", cm)
+    
+    total = cm.sum()
+    acc = float(cm.trace()) / float(total) if total > 0 else 0.0
 
     metrics = {
+        "accuracy": acc,
+        "labels": class_names,
         "classification_report": classification_report(
             y_true, y_pred, target_names=class_names, digits=4, output_dict=True
         ),
@@ -60,9 +75,13 @@ def eval_on_test(model, loader, class_names: List[str], device) -> Dict:
     with open("reports/metrics.json", "w") as f:
         json.dump(metrics, f, indent=2)
 
-    # pretty heatmap
-    _plot_confusion_matrix(cm, class_names, title="Recycle Classifier Confusion Matrix",
-                           outpath="reports/confusion_matrix.png")
+    # Pretty heatmap
+    _plot_confusion_matrix(
+        cm,
+        class_names,
+        title="Recycle Classifier Confusion Matrix",
+        outpath="reports/confusion_matrix.png",
+    )
 
     print("Saved: reports/metrics.json and reports/confusion_matrix.png")
     return metrics
