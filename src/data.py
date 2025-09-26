@@ -1,4 +1,3 @@
-# src/data.py
 from pathlib import Path
 import os, json, torch
 from typing import Dict, Tuple
@@ -6,6 +5,7 @@ from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 
 def build_transforms(img_size: int = 224) -> Tuple[transforms.Compose, transforms.Compose]:
+
     train_tf = transforms.Compose([
         transforms.Resize((img_size, img_size)),
         transforms.RandomHorizontalFlip(),
@@ -14,6 +14,7 @@ def build_transforms(img_size: int = 224) -> Tuple[transforms.Compose, transform
         transforms.Normalize([0.485, 0.456, 0.406],
                              [0.229, 0.224, 0.225]),
     ])
+
     eval_tf = transforms.Compose([
         transforms.Resize((img_size, img_size)),
         transforms.ToTensor(),
@@ -21,6 +22,7 @@ def build_transforms(img_size: int = 224) -> Tuple[transforms.Compose, transform
                              [0.229, 0.224, 0.225]),
     ])
     return train_tf, eval_tf
+
 
 def load_data(data_root: str, bs: int, num_workers: int = 2) -> Dict:
     """ImageFolder loader for data/images/train|val|test/{paper,plastic,metal}"""

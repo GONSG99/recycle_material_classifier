@@ -1,4 +1,3 @@
-# src/app.py
 import json, torch
 from pathlib import Path
 from PIL import Image
@@ -6,25 +5,20 @@ from torchvision import transforms
 import gradio as gr
 from model import build_model
 
-# ---- paths ----
 WEIGHTS = Path("models/resnet18_best.pt")
 LABELS  = Path("models/labels.json")
 
-# ---- device ----
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# ---- labels ----
 with open(LABELS) as f:
     idx2name = {int(k): v for k, v in json.load(f).items()}
 class_names = [idx2name[i] for i in sorted(idx2name.keys())]
 
-# ---- model ----
 model = build_model(num_classes=len(class_names), freeze_backbone=False, device=device)
 state = torch.load(WEIGHTS, map_location=device)
 model.load_state_dict(state)
 model.eval()
 
-# ---- transforms (same as eval) ----
 tfm = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
@@ -38,6 +32,10 @@ def predict(img: Image.Image):
     scores = {cls: float(probs[i]) for i, cls in enumerate(class_names)}
     top = max(scores, key=scores.get)
     return {"label": top, "conf": round(scores[top]*100, 2)}, scores
+
+
+
+
 
 # ---- minimal CSS: hide branding/footer ----
 css = """

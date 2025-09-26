@@ -1,4 +1,3 @@
-# flatten_trash_dataset.py
 import os, re, shutil, random
 from pathlib import Path
 import kagglehub
@@ -13,7 +12,7 @@ random.seed(42)
 
 def infer_class(path: Path):
     parts = [p.lower() for p in path.parts]
-    for p in reversed(parts):               # check from leaf upward
+    for p in reversed(parts):               
         if p in CLASS_NAMES:
             return p
     return None
@@ -54,7 +53,7 @@ def main():
     print(f"Found {len(items)} images across classes:", sorted({c for _, c in items}))
 
     split_and_copy(items)
-    print("✅ Flattened dataset ready in:", TARGET)
+    print("Flattened dataset ready in:", TARGET)
 
 if __name__ == "__main__":
     main()
