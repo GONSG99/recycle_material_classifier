@@ -8,12 +8,8 @@ from sklearn.metrics import classification_report, confusion_matrix
 import matplotlib.pyplot as plt
 
 
-def _plot_confusion_matrix(
-    cm: np.ndarray,
-    class_names: List[str],
-    title: str,
-    outpath: str = "reports/confusion_matrix.png",
-):
+def _plot_confusion_matrix(cm: np.ndarray, class_names: List[str], title: str,
+                           outpath: str = "reports/confusion_matrix.png"):
     """Matplotlib heatmap (no seaborn). Saves a nice PNG."""
     cm = np.array(cm)
     fig, ax = plt.subplots(figsize=(7, 6))
@@ -85,3 +81,4 @@ def eval_on_test(model, loader, class_names: List[str], device) -> Dict:
 
     print("Saved: reports/metrics.json and reports/confusion_matrix.png")
     return metrics
+

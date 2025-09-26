@@ -182,3 +182,101 @@ def train_model(model, loaders, epochs, lr, device, patience=3):
     print(f" TRAINING DONE  •  best val acc = {best_val_acc:.4f}")
     print("=" * 68 + "\n")
     return model, best_val_acc
+
+
+# ---------- visualisation of data transformations ----------
+import numpy as np
+import matplotlib
+matplotlib.use("TkAgg")   # Force Tkinter backend (interactive window)
+import matplotlib.pyplot as plt
+from model import build_model
+from data import load_data, build_transforms
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # stop the terminal annoying message suppress TensorFlow warnings if any
+from PIL import Image
+#------------------- Show RAW AND TRANSFORMED Samples -------------------(BOTH TOGETHER IN ONE tab :D)
+from torchvision import datasets, transforms
+
+def show_raw_samples(data_root, class_names, num_samples=5):
+    """Display raw images without any transforms."""
+    raw_dataset = datasets.ImageFolder(
+        os.path.join(data_root, "train"), 
+        transform=transforms.ToTensor()  # just convert to tensor for plotting
+    )
+
+def show_transformed_samples(dataset, class_names, num_samples=5):
+    """Display images after transformations (what model sees)."""
+
+
+def show_raw_and_transformed_samples(data_root: str, dataset, class_names: List[str], num_samples: int = 5):
+    """Display raw images (top row) and transformed images (bottom row) in a single figure."""
+    
+    # Load raw images
+    raw_dataset = datasets.ImageFolder(
+        os.path.join(data_root, "train"), 
+        transform=transforms.ToTensor()
+    )
+
+    fig, axes = plt.subplots(2, num_samples, figsize=(4*num_samples, 8))
+    plt.suptitle("Raw (Top) vs Transformed (Bottom) Samples", fontsize=16)
+
+    for i in range(num_samples):
+        # --- Raw image ---
+        idx = np.random.randint(0, len(raw_dataset))
+        raw_img, label_idx = raw_dataset[idx]
+        raw_img = raw_img.permute(1, 2, 0).numpy()
+        raw_img = np.clip(raw_img, 0, 1)
+        axes[0, i].imshow(raw_img)
+        axes[0, i].set_title(f"{class_names[label_idx]}")
+        axes[0, i].axis("off")
+
+        # --- Transformed image ---
+        trans_img, label_idx = dataset[idx]  # use same idx for comparison
+        mean = np.array([0.485, 0.456, 0.406])
+        std  = np.array([0.229, 0.224, 0.225])
+        trans_img = trans_img.permute(1, 2, 0).numpy()
+        trans_img = std * trans_img + mean
+        trans_img = np.clip(trans_img, 0, 1)
+        axes[1, i].imshow(trans_img)
+        axes[1, i].set_title(f"{class_names[label_idx]}")
+        axes[1, i].axis("off")
+
+    plt.tight_layout()
+    plt.show()
+# ---------- visualisation ----------
+if __name__ == "__main__":
+    DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+    DATA_ROOT = r"C:\Users\fearl\OneDrive\Desktop\recycle_material_classifier\data\images"
+    MODEL_PATH = "models/resnet18_best.pt"
+    BATCH_SIZE = 32
+
+    print(f"Using device: {DEVICE}")
+    print("Starting visulisation...")
+
+    # Load transforms
+    train_tf, eval_tf = build_transforms(img_size=224)
+
+    # Load data
+    data = load_data(DATA_ROOT, BATCH_SIZE)
+    test_loader = data["loaders"]["test"]
+    class_names = data["dsets"]["train"].classes
+    print(f"Found {len(class_names)} classes: {class_names}")
+
+    # Build and load model
+    model = build_model(num_classes=len(class_names), freeze_backbone=False, device=DEVICE)
+    model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
+    print(f"Model weights loaded from {MODEL_PATH}")
+
+
+    # Show raw + transformed samples (single window)
+       # 1️⃣ Show raw images
+    show_raw_samples(DATA_ROOT, class_names, num_samples=5)
+
+    # 2️⃣ Show transformed images
+    train_dataset = data["dsets"]["train"]
+    show_transformed_samples(train_dataset, class_names, num_samples=5)
+
+    train_dataset = data["dsets"]["train"]
+    show_raw_and_transformed_samples(DATA_ROOT, train_dataset, class_names, num_samples=5)
+
+    print("\nvisualisation of transformation complete.")

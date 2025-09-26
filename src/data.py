@@ -10,6 +10,8 @@ def build_transforms(img_size: int = 224) -> Tuple[transforms.Compose, transform
         transforms.Resize((img_size, img_size)),
         transforms.RandomHorizontalFlip(),
         transforms.ColorJitter(0.2, 0.2, 0.2, 0.1),
+        transforms.RandomRotation(45, fill=(0,)),  # background filled with black
+        transforms.RandomHorizontalFlip(p=0.5),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406],
                              [0.229, 0.224, 0.225]),
@@ -32,7 +34,7 @@ def load_data(data_root: str, bs: int, num_workers: int = 2) -> Dict:
         "val":   datasets.ImageFolder(os.path.join(data_root, "val"),   transform=eval_tf),
         "test":  datasets.ImageFolder(os.path.join(data_root, "test"),  transform=eval_tf),
     }
-
+#    class_names = dsets["train"].classes
     Path("models").mkdir(parents=True, exist_ok=True)
     with open("models/labels.json", "w") as f:
         json.dump({v: k for k, v in dsets["train"].class_to_idx.items()}, f, indent=2)
