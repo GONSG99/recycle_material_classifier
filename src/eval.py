@@ -7,10 +7,9 @@ import torch
 from sklearn.metrics import classification_report, confusion_matrix
 import matplotlib.pyplot as plt
 
+# Plot confusion matrix as a heatmap
+def _plot_confusion_matrix(cm: np.ndarray, class_names: List[str], title: str, outpath: str = "reports/confusion_matrix.png"):
 
-def _plot_confusion_matrix(cm: np.ndarray, class_names: List[str], title: str,
-                           outpath: str = "reports/confusion_matrix.png"):
-    """Matplotlib heatmap (no seaborn). Saves a nice PNG."""
     cm = np.array(cm)
     fig, ax = plt.subplots(figsize=(7, 6))
     im = ax.imshow(cm)
@@ -35,9 +34,9 @@ def _plot_confusion_matrix(cm: np.ndarray, class_names: List[str], title: str,
     plt.savefig(outpath, dpi=200)
     plt.close(fig)
 
-
+# Evaluate model on test set and print/save metrics
 def eval_on_test(model, loader, class_names: List[str], device) -> Dict:
-    """Runs test set, prints report + confusion matrix; saves JSON + PNG."""
+
     model.eval()
     y_true, y_pred = [], []
 

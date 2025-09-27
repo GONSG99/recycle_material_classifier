@@ -1,8 +1,8 @@
 from pathlib import Path
 import shutil, random
 
-SRC = Path("data/own_images") # paper/, plastic/, metal/
-DST = Path("data/own_images") # output root
+SRC = Path("data/own_images") 
+DST = Path("data/own_images") 
 SPLIT = {"train":0.70, "val":0.15, "test":0.15}
 EXTS = {".jpg",".jpeg",".png",".bmp",".webp"}
 
@@ -17,6 +17,7 @@ def split_copy(cls):
     parts = {"train":files[:n_tr], "val":files[n_tr:n_tr+n_va], "test":files[n_tr+n_va:]}
 
     for split, arr in parts.items():
+
         out = DST/split/cls; out.mkdir(parents=True, exist_ok=True)
 
         for src in arr: shutil.copy(src, out/src.name)
@@ -24,6 +25,7 @@ def split_copy(cls):
     print(f"{cls}: {n} -> {len(parts['train'])}/{len(parts['val'])}/{len(parts['test'])}")
 
 for cls in ["paper","plastic","metal"]:
+    
     split_copy(cls)
 
 print("Done", DST)

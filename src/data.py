@@ -4,6 +4,7 @@ from typing import Dict, Tuple
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 
+# Build data transforms and loaders for training and evaluation
 def build_transforms(img_size: int = 224) -> Tuple[transforms.Compose, transforms.Compose]:
 
     train_tf = transforms.Compose([
@@ -25,16 +26,16 @@ def build_transforms(img_size: int = 224) -> Tuple[transforms.Compose, transform
     ])
     return train_tf, eval_tf
 
-
+# Load datasets and create data loaders
 def load_data(data_root: str, bs: int, num_workers: int = 2) -> Dict:
-    """ImageFolder loader for data/images/train|val|test/{paper,plastic,metal}"""
+
     train_tf, eval_tf = build_transforms(224)
     dsets = {
         "train": datasets.ImageFolder(os.path.join(data_root, "train"), transform=train_tf),
         "val":   datasets.ImageFolder(os.path.join(data_root, "val"),   transform=eval_tf),
         "test":  datasets.ImageFolder(os.path.join(data_root, "test"),  transform=eval_tf),
     }
-#    class_names = dsets["train"].classes
+
     Path("models").mkdir(parents=True, exist_ok=True)
     with open("models/labels.json", "w") as f:
         json.dump({v: k for k, v in dsets["train"].class_to_idx.items()}, f, indent=2)
