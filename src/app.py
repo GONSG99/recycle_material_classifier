@@ -52,36 +52,19 @@ def predict(img: Image.Image):
 
 
 # # ---- IP Webcam setup ----
-# ip_url = "http://10.132.39.118:8080/video"  # replace with your phone's IP
-# cap = cv2.VideoCapture(ip_url)
-# ret, prev = cap.read()
-# prev_gray = cv2.cvtColor(prev, cv2.COLOR_BGR2GRAY)
+#ip_url = "http://10.132.39.1:8080/video"  # replace with your phone's IP
+ip_url = "http://192.168.1.6:8080/video"
+#ip_url = "http://10.132.39.1:8080/video"
+cap = None
+prev_gray = None
 
-def live_ipcam_stream():
-    global prev_gray
-    ret, frame = cap.read()
-    if not ret:
-        return {"label":"No frame","conf":0}, {}
-
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    diff = cv2.absdiff(prev_gray, gray)
-    motion_level = cv2.countNonZero(cv2.threshold(diff, 25, 255, cv2.THRESH_BINARY)[1])
-    prev_gray = gray
-
-    if motion_level > 100:  # adjust threshold
-        img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-        return predict(img)
-    else:
-        return {"label":"No motion","conf":0}, {}
-
-stop_flag = False  # global flag to stop the thread
 
 def start_live_feed():
     global stop_flag
     stop_flag = False
     def run():
         while not stop_flag:
-            outputs = live_ipcam_stream()  # returns (json_dict, label_dict)
+            outputs = live_ipcam_generator()  # returns (json_dict, label_dict)
             json_out_live.update(outputs[0])
             label_out_live.update(outputs[1])
             time.sleep(0.1)
@@ -91,26 +74,67 @@ def stop_live_feed():
     global stop_flag
     stop_flag = True
 
+cap = None
+prev_gray = None
+ip_url = "http://10.132.39.1:8080/video"
+#ip_url = "http://192.168.1.6:8080/video"
 def live_ipcam_generator():
-    global prev_gray
+    global cap, prev_gray
+
     while True:
+        # Try to initialize camera if not already or if previous failed
+        if cap is None or not cap.isOpened():
+            try:
+                cap = cv2.VideoCapture(ip_url)
+                time.sleep(1)  # give the stream a second to start
+                ret, prev = cap.read()
+                if not ret or prev is None:
+                    prev_gray = None
+                    raise ValueError("No frame received")
+                prev_gray = cv2.cvtColor(prev, cv2.COLOR_BGR2GRAY)
+            except Exception as e:
+                # Yield placeholder outputs while camera is offline
+                dummy_img = Image.new("RGB", (224,224), (0,0,0))
+                yield {"label":"Camera offline", "conf":0}, {}, [dummy_img], {"motion":0}
+                time.sleep(1)
+                continue
+
+        # Read frame
         ret, frame = cap.read()
-        if not ret:
-            yield {"label": "No frame", "conf": 0}, {}
+        if not ret or frame is None:
+            # Release the failed capture and try to reconnect next iteration
+            cap.release()
+            cap = None
+            dummy_img = Image.new("RGB", (224,224), (0,0,0))
+            yield {"label":"Camera disconnected", "conf":0}, {}, [dummy_img], {"motion":0}
+            time.sleep(1)
             continue
 
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        diff = cv2.absdiff(prev_gray, gray)
-        motion_level = cv2.countNonZero(cv2.threshold(diff, 25, 255, cv2.THRESH_BINARY)[1])
+        if prev_gray is not None:
+            diff = cv2.absdiff(prev_gray, gray)
+            motion_level = cv2.countNonZero(cv2.threshold(diff, 25, 255, cv2.THRESH_BINARY)[1])
+        else:
+            motion_level = 0
         prev_gray = gray
 
-        if motion_level > 100:  # motion threshold
-            img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-            yield predict(img)
-        else:
-            yield {"label": "No motion", "conf": 0}, {}
+        img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
 
-        time.sleep(0.1)  # pause 100ms between frames
+        # Prediction only if motion detected
+        if motion_level > 100:
+            pred_images, scores = predict(img)
+            pred_json = {"label": max(scores, key=scores.get), "conf": round(max(scores.values())*100,2)}
+        else:
+            pred_images, scores = [img], {}
+            pred_json = {"label":"No motion", "conf":0}
+
+        motion_info = {"motion_level": motion_level}
+
+        # Yield outputs in exact order for Gradio
+        yield pred_json, scores, pred_images, motion_info
+
+        time.sleep(0.03)
+
 
 # ---- minimal CSS: hide branding/footer ----
 css = """
@@ -133,25 +157,20 @@ with gr.Blocks(css=css) as demo:
             
             predict_btn.click(predict, inputs=img_input, outputs=[gallery_out, label_out])
 
-        # --- Local Webcam ---
-        # with gr.TabItem("Webcam"):
-        #     webcam_input = gr.Camera(type="pil", label="Take a picture")
-        #     json_out_cam = gr.JSON(label="Prediction (top class + confidence %)")
-        #     label_out_cam = gr.Label(num_top_classes=3, label="Top-3 probabilities")
-        #     webcam_input.change(predict, inputs=webcam_input, outputs=[json_out_cam, label_out_cam])
 
         # --- Live IP Webcam ---
         with gr.TabItem("Live IP Webcam"):
             json_out_live = gr.JSON(label="Prediction (top class + confidence %)")
             label_out_live = gr.Label(num_top_classes=3, label="Top-3 probabilities")
+            live_feed = gr.Gallery(label="Live Feed")
+            motion_out = gr.JSON(label="Motion Info")
             start_btn = gr.Button("Start Live Feed")
             stop_btn  = gr.Button("Stop Live Feed")
 
-            # Start the generator when the button is clicked
             start_btn.click(
                 live_ipcam_generator,
                 inputs=[],
-                outputs=[json_out_live, label_out_live]
+                outputs=[json_out_live, label_out_live, live_feed, motion_out]
             )
 
     # Stop button can just close the browser tab or set a global stop flag
