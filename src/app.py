@@ -52,7 +52,7 @@ def predict(img: Image.Image):
     return [img, overlay, heatmap], pred_label, conf, scores
 
 # ---- history ----
-MAX_HISTORY = 5
+MAX_HISTORY = 12
 
 def classify_and_update(img, history_state):
     if img is None:
@@ -64,12 +64,21 @@ def classify_and_update(img, history_state):
     # update history
     history_state.append(img)
     history_state = history_state[-MAX_HISTORY:]
-        
-    return gallery_imgs, pred_label, f"{round(conf*100)}%", all_scores, history_state, history_state
+    
+    # pad with None for empty slots
+    padded = history_state + [None]*(MAX_HISTORY - len(history_state))
+    
+    return gallery_imgs, pred_label, f"{round(conf*100)}%", all_scores, *padded, history_state
 
 # ---- history select ----
 def on_history_select(evt: gr.SelectData, history_state):
     return history_state[evt.index]
+
+# ---- history click ----
+def on_history_click(idx, history_state):
+    if idx < len(history_state):
+        return history_state[idx]
+    return None
 
 # ---- IP Webcam setup ----
 # #ip_url = "http://10.132.39.1:8080/video"  # replace with your phone's IP
@@ -188,14 +197,19 @@ with gr.Blocks(theme=gr.themes.Soft(), css=css) as demo:
                     )
                     # Load initial history
                     history_state = gr.State([])
-                    past_uploads = gr.Gallery(
-                        label="History",
-                        columns=5,
-                        rows=1,
-                        object_fit="cover",
-                        interactive=False,
-                    )
-                    submit_btn = gr.Button("Classify", variant="primary")
+                    with gr.Row():
+                        history_slots = [
+                            gr.Image(type="pil", interactive=False, height=120, width=120, label=f"#{i+1}")
+                            for i in range(MAX_HISTORY)
+                        ]
+                        
+                        # Add select and click events to each history slot
+                        for i, slot in enumerate(history_slots):
+                            slot.select(
+                                fn=lambda h, i=i: on_history_click(i, h), 
+                                inputs=history_state, 
+                                outputs=image_input
+                            )
 
                 # --- Output Column ---
                 with gr.Column(scale=1):
@@ -210,19 +224,13 @@ with gr.Blocks(theme=gr.themes.Soft(), css=css) as demo:
                         columns=3,
                         height=300
                     )
-
+                    submit_btn = gr.Button("Classify", variant="primary")
+                    
             # --- Button Logic ---
             submit_btn.click(
                 fn=classify_and_update,
                 inputs=[image_input, history_state],
-                outputs=[heatmap_gallery, predicted_label, confidence_score, all_scores_label, past_uploads, history_state]
-            )
-            
-            # --- Past uploads logic ---
-            past_uploads.select(
-                fn=on_history_select,
-                inputs=history_state,
-                outputs=image_input
+                outputs=[heatmap_gallery, predicted_label, confidence_score, all_scores_label, *history_slots, history_state]
             )
             
          # --- Live IP Webcam ---
