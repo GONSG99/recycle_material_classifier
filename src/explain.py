@@ -73,7 +73,7 @@ def generate_gradcam(img, model, device, class_names, threshold=0.5):
     # Heatmap
     heatmap = cv2.applyColorMap(np.uint8(255 * cam), cv2.COLORMAP_TURBO)
     heatmap_masked = cv2.bitwise_and(heatmap, heatmap, mask=mask)
-    heatmap_rgb = cv2.cvtColor(heatmap_masked, cv2.COLOR_BGR2RGB)
+    heatmap_rgb = cv2.cvtColor(heatmap, cv2.COLOR_BGR2RGB)
 
     # Overlay
     orig_bgr = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)

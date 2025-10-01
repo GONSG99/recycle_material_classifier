@@ -15,11 +15,6 @@ stop_flag = False  # global flag to stop the thread
 # ---- paths ----
 WEIGHTS = Path("models/resnet18_best.pt")
 LABELS  = Path("models/labels.json")
-EXAMPLES = [
-    ["examples/paper.jpg"],
-    ["examples/plastic.jpg"],
-    ["examples/metal.jpg"],
-]
 
 # ---- device ----
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -42,6 +37,7 @@ tfm = transforms.Compose([
     transforms.Normalize([0.485, 0.456, 0.406],[0.229, 0.224, 0.225]),
 ])
 
+# ---- prediction and heatmaps ----
 def predict(img: Image.Image):
     # Grad-CAM
     overlay, heatmap, pred_label, conf = generate_gradcam(img, model, device, class_names)
@@ -55,15 +51,25 @@ def predict(img: Image.Image):
     
     return [img, overlay, heatmap], pred_label, conf, scores
 
-def classify_image(img: Image.Image):
-    """Wrapper function to format predictions for the new Gradio UI."""
+# ---- history ----
+MAX_HISTORY = 5
+
+def classify_and_update(img, history_state):
     if img is None:
-        return [], "N/A", "N/A", {}
-        
+        return [], "N/A", "N/A", {}, history_state
+    
+    # run classification
     gallery_imgs, pred_label, conf, all_scores = predict(img)
     
-    # Return values formatted for the new output components
-    return gallery_imgs, pred_label, f"{round(conf*100)}%", all_scores
+    # update history
+    history_state.append(img)
+    history_state = history_state[-MAX_HISTORY:]
+        
+    return gallery_imgs, pred_label, f"{round(conf*100)}%", all_scores, history_state, history_state
+
+# ---- history select ----
+def on_history_select(evt: gr.SelectData, history_state):
+    return history_state[evt.index]
 
 # ---- IP Webcam setup ----
 # #ip_url = "http://10.132.39.1:8080/video"  # replace with your phone's IP
@@ -149,7 +155,7 @@ def live_ipcam_generator():
         time.sleep(0.03)
 
 
-# ---- minimal CSS: hide branding/footer ----
+# ---- minimal CSS ----
 css = """
 footer, #footer, .footer, [data-testid="branding"] {display:none !important;}
 a[href*="gradio.app"] {display:none !important;}
@@ -180,10 +186,14 @@ with gr.Blocks(theme=gr.themes.Soft(), css=css) as demo:
                         label="Upload Image",
                         height=350
                     )
-                    gr.Examples(
-                        examples=EXAMPLES,
-                        inputs=image_input,
-                        label="Click an example to try it out!"
+                    # Load initial history
+                    history_state = gr.State([])
+                    past_uploads = gr.Gallery(
+                        label="History",
+                        columns=5,
+                        rows=1,
+                        object_fit="cover",
+                        interactive=False,
                     )
                     submit_btn = gr.Button("Classify", variant="primary")
 
@@ -196,18 +206,25 @@ with gr.Blocks(theme=gr.themes.Soft(), css=css) as demo:
 
                     # Add heatmap
                     heatmap_gallery = gr.Gallery(
-                        label="Original / Overlay / Heatmap",
+                        label="Visualizations",
                         columns=3,
                         height=300
                     )
 
             # --- Button Logic ---
             submit_btn.click(
-                fn=classify_image,
-                inputs=image_input,
-                outputs=[heatmap_gallery, predicted_label, confidence_score, all_scores_label]
+                fn=classify_and_update,
+                inputs=[image_input, history_state],
+                outputs=[heatmap_gallery, predicted_label, confidence_score, all_scores_label, past_uploads, history_state]
             )
-        
+            
+            # --- Past uploads logic ---
+            past_uploads.select(
+                fn=on_history_select,
+                inputs=history_state,
+                outputs=image_input
+            )
+            
          # --- Live IP Webcam ---
         with gr.TabItem("Live IP Webcam"):
             json_out_live = gr.JSON(label="Prediction (top class + confidence %)")
