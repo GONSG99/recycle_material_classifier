@@ -15,6 +15,11 @@ stop_flag = False  # global flag to stop the thread
 # ---- paths ----
 WEIGHTS = Path("models/resnet18_best.pt")
 LABELS  = Path("models/labels.json")
+EXAMPLES = [
+    ["examples/paper.jpg"],
+    ["examples/plastic.jpg"],
+    ["examples/metal.jpg"],
+]
 
 # ---- device ----
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -48,16 +53,24 @@ def predict(img: Image.Image):
         scores = {cls: float(probs[i]) for i, cls in enumerate(class_names)}
         top = max(scores, key=scores.get)
     
-    return [img, overlay], scores
+    return [img, overlay, heatmap], pred_label, conf, scores
 
+def classify_image(img: Image.Image):
+    """Wrapper function to format predictions for the new Gradio UI."""
+    if img is None:
+        return [], "N/A", "N/A", {}
+        
+    gallery_imgs, pred_label, conf, all_scores = predict(img)
+    
+    # Return values formatted for the new output components
+    return gallery_imgs, pred_label, f"{round(conf*100)}%", all_scores
 
-# # ---- IP Webcam setup ----
-#ip_url = "http://10.132.39.1:8080/video"  # replace with your phone's IP
-ip_url = "http://192.168.1.6:8080/video"
-#ip_url = "http://10.132.39.1:8080/video"
-cap = None
-prev_gray = None
-
+# ---- IP Webcam setup ----
+# #ip_url = "http://10.132.39.1:8080/video"  # replace with your phone's IP
+# ip_url = "http://192.168.1.6:8080/video"
+# ip_url = "http://10.132.39.1:8080/video"
+# cap = None
+# prev_gray = None
 
 def start_live_feed():
     global stop_flag
@@ -142,23 +155,60 @@ footer, #footer, .footer, [data-testid="branding"] {display:none !important;}
 a[href*="gradio.app"] {display:none !important;}
 """
 
-with gr.Blocks(css=css) as demo:
-    gr.Markdown("# Recycle Material Classifier")
-    gr.Markdown("Upload an image or use live camera below:")
+# ---- New Gradio Blocks UI ----
+with gr.Blocks(theme=gr.themes.Soft(), css=css) as demo:
+    gr.Markdown("<h1>♻️ Recycle Material Classifier</h1>")
+    gr.Markdown("Upload a photo of a recyclable item to classify it as **paper**, **plastic**, or **metal**.")
 
     with gr.Tabs():
         # --- Upload Image ---
-        with gr.TabItem("Upload Image"):
-            img_input = gr.Image(type="pil", label="Upload an image")
-            predict_btn = gr.Button("Predict")
-            # Side-by-side gallery + bar chart
-            gallery_out = gr.Gallery(label="Original & Grad-CAM", columns=2, height=300)
-            label_out = gr.Label(num_top_classes=3, label="Top-3 probabilities")
+        # with gr.TabItem("Upload Image"):
+        #     img_input = gr.Image(type="pil", label="  Upload an image")
+        #     predict_btn = gr.Button("Predict")
+        #     # Side-by-side gallery + bar chart
+        #     gallery_out = gr.Gallery(label="Original & Grad-CAM", columns=2, height=300)
+        #     label_out = gr.Label(num_top_classes=3, label="Top-3 probabilities")
             
-            predict_btn.click(predict, inputs=img_input, outputs=[gallery_out, label_out])
+        #     predict_btn.click(predict, inputs=img_input, outputs=[gallery_out, label_out])
+        with gr.TabItem("Upload Image"):
 
+            with gr.Row(variant="panel"):
+                # --- Input Column ---
+                with gr.Column(scale=1):
+                    image_input = gr.Image(
+                        type="pil", 
+                        label="Upload Image",
+                        height=350
+                    )
+                    gr.Examples(
+                        examples=EXAMPLES,
+                        inputs=image_input,
+                        label="Click an example to try it out!"
+                    )
+                    submit_btn = gr.Button("Classify", variant="primary")
 
-        # --- Live IP Webcam ---
+                # --- Output Column ---
+                with gr.Column(scale=1):
+                    gr.Markdown("<h2>Results</h2>")
+                    predicted_label = gr.Textbox(label="Predicted Material", interactive=False)
+                    confidence_score = gr.Textbox(label="Confidence", interactive=False)
+                    all_scores_label = gr.Label(num_top_classes=3, label="All Confidence Scores")
+
+                    # Add heatmap
+                    heatmap_gallery = gr.Gallery(
+                        label="Original / Overlay / Heatmap",
+                        columns=3,
+                        height=300
+                    )
+
+            # --- Button Logic ---
+            submit_btn.click(
+                fn=classify_image,
+                inputs=image_input,
+                outputs=[heatmap_gallery, predicted_label, confidence_score, all_scores_label]
+            )
+        
+         # --- Live IP Webcam ---
         with gr.TabItem("Live IP Webcam"):
             json_out_live = gr.JSON(label="Prediction (top class + confidence %)")
             label_out_live = gr.Label(num_top_classes=3, label="Top-3 probabilities")
