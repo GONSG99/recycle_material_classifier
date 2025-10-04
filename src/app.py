@@ -1,4 +1,4 @@
-# src/app.py
+# python .\src\app.py
 import json, torch
 from pathlib import Path
 from PIL import Image
