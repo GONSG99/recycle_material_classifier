@@ -1,4 +1,16 @@
 # python .\src\app.py
+
+# ------------------------------
+# Recycle Material Classifier App
+# ------------------------------
+# This script:
+# 1. Loads a trained ResNet-18 model
+# 2. Lets user upload an image or use a live IP camera
+# 3. Classifies the item (paper/plastic/metal)
+# 4. Shows Grad-CAM heatmaps for explainability
+# 5. Displays classification history
+# ------------------------------
+
 import json, torch
 from pathlib import Path
 from PIL import Image
@@ -10,39 +22,42 @@ import threading
 import time
 from explain import generate_gradcam
 
-stop_flag = False  # global flag to stop the thread
+# ---- GLOBAL FLAG (used to stop live feed thread) ---
+stop_flag = False  
 
-# ---- paths ----
+# ---- MODEL FILE PATHS ----
 WEIGHTS = Path("models/resnet18_best.pt")
 LABELS  = Path("models/labels.json")
 
-# ---- device ----
+# ---- SELECT DEVICE (GPU if available) ----
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# ---- labels ----
+# ---- LOAD LABELS ----
 with open(LABELS) as f:
     idx2name = {int(k): v for k, v in json.load(f).items()}
 class_names = [idx2name[i] for i in sorted(idx2name.keys())]
 
-# ---- model ----
+# ---- LOAD MODEL ----
 model = build_model(num_classes=len(class_names), freeze_backbone=False, device=device)
 state = torch.load(WEIGHTS, map_location=device)
 model.load_state_dict(state)
 model.eval()
 
-# ---- transforms (same as eval) ----
+# ---- IMAGE TRANSFORMATIONS ----
+# Resize -> Tensor -> Normalize (same as training)
 tfm = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
     transforms.Normalize([0.485, 0.456, 0.406],[0.229, 0.224, 0.225]),
 ])
 
-# ---- prediction and heatmaps ----
+# ---- PREDICTION FUNCTION ----
 def predict(img: Image.Image):
-    # Grad-CAM
+    
+    # Generate Grad-CAM heatmaps (explainable visualization)
     overlay, heatmap, pred_label, conf = generate_gradcam(img, model, device, class_names)
     
-    # Probabilities
+    # Compute probability scores for all classes
     with torch.no_grad():
         x = tfm(img.convert("RGB")).unsqueeze(0).to(device)
         probs = torch.softmax(model(x), dim=1).squeeze(0).cpu().tolist()
@@ -51,26 +66,29 @@ def predict(img: Image.Image):
     
     return [img, overlay, heatmap], pred_label, conf, scores
 
-# ---- history ----
-MAX_HISTORY = 12
+# ---- HISTORY SETTINGS ----
+MAX_HISTORY = 12 # show up to 12 previous uploads
+
 
 def classify_and_update(img, history_state):
+
     if img is None:
         return [], "N/A", "N/A", {}, history_state
     
-    # run classification
+    # Run classification
     gallery_imgs, pred_label, conf, all_scores = predict(img)
     
-    # update history
+    # Update history (keep last 12 images)
     history_state.append(img)
     history_state = history_state[-MAX_HISTORY:]
     
-    # pad with None for empty slots
+    # Pad empty slots
     padded = history_state + [None]*(MAX_HISTORY - len(history_state))
     
     return gallery_imgs, pred_label, f"{round(conf*100)}%", all_scores, *padded, history_state
 
-# ---- history select ----
+
+# ---- HISTORY CLICK EVENT ----
 def on_history_select(evt: gr.SelectData, history_state):
     return history_state[evt.index]
 
@@ -80,21 +98,24 @@ def on_history_click(idx, history_state):
         return history_state[idx]
     return None
 
-# ---- IP Webcam setup ----
+# ---- IP CAMERA SETUP ----
+# Replace the IP with your phone’s IP Webcam URL
 # ip_url = "http://10.132.39.1:8080/video"  # replace with your phone's IP
-#ip_url = "http://192.168.1.6:8080/video"
+# ip_url = "http://192.168.1.6:8080/video"
 ip_url = "http://192.168.1.4:8080/video"
 
-# ip_url = "http://10.132.39.1:8080/video"
+# Variables for motion detection
 # cap = None
 # prev_gray = None
+# motion_active = False
+# recent_preds = []
 
 def start_live_feed():
     global stop_flag
     stop_flag = False
     def run():
         while not stop_flag:
-            outputs = live_ipcam_generator()  # returns (json_dict, label_dict)
+            outputs = live_ipcam_generator()  # Returns (json_dict, label_dict)
             json_out_live.update(outputs[0])
             label_out_live.update(outputs[1])
             time.sleep(0.1)
@@ -111,16 +132,19 @@ recent_preds = []
 
 #ip_url = "http://10.132.39.1:8080/video"
 #ip_url = "http://192.168.1.6:8080/video"
+
 def live_ipcam_generator():
+
     """
     Generator that yields only frames with motion detected.
     Skips all frames without meaningful motion.
     """
+
     global cap, prev_gray
 
-    motion_threshold = 100  # number of changed pixels to consider "motion"
+    motion_threshold = 100  # How sensitive to motion
+    cooldown_sec = 0.5  # Avoid multiple detections per second
     last_trigger_time = 0
-    cooldown_sec = 0.5  # optional: avoid multiple triggers for same object
 
     while True:
         # Initialize camera if not already
@@ -134,6 +158,7 @@ def live_ipcam_generator():
                     raise ValueError("No frame received")
                 prev_gray = cv2.cvtColor(prev, cv2.COLOR_BGR2GRAY)
             except Exception:
+                # If camera fails, send a blank image + "offline" message
                 dummy_img = Image.new("RGB", (224, 224), (0, 0, 0))
                 yield {"label": "Camera offline", "conf": 0}, {}, [dummy_img], {"motion_level": 0}
                 time.sleep(1)
@@ -149,6 +174,7 @@ def live_ipcam_generator():
             time.sleep(1)
             continue
 
+        # Convert to grayscale for motion detection
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         if prev_gray is not None:
             diff = cv2.absdiff(prev_gray, gray)
@@ -182,18 +208,20 @@ def live_ipcam_generator():
         # tiny sleep to avoid hogging CPU
         time.sleep(0.01)
 
-# ---- minimal CSS ----
+
+# ---- SIMPLE CSS (hide Gradio footer) ----
 css = """
 footer, #footer, .footer, [data-testid="branding"] {display:none !important;}
 a[href*="gradio.app"] {display:none !important;}
 """
 
-# ---- New Gradio Blocks UI ----
+# ---- GRADIO APP LAYOUT ----
 with gr.Blocks(theme=gr.themes.Soft(), css=css) as demo:
     gr.Markdown("<h1>♻️ Recycle Material Classifier</h1>")
     gr.Markdown("Upload a photo of a recyclable item to classify it as **paper**, **plastic**, or **metal**.")
 
     with gr.Tabs():
+
         # --- Upload Image ---
         # with gr.TabItem("Upload Image"):
         #     img_input = gr.Image(type="pil", label="  Upload an image")
@@ -203,9 +231,12 @@ with gr.Blocks(theme=gr.themes.Soft(), css=css) as demo:
         #     label_out = gr.Label(num_top_classes=3, label="Top-3 probabilities")
             
         #     predict_btn.click(predict, inputs=img_input, outputs=[gallery_out, label_out])
+
+         # ========== TAB 1: UPLOAD IMAGE ==========
         with gr.TabItem("Upload Image"):
 
             with gr.Row(variant="panel"):
+                
                 # --- Input Column ---
                 with gr.Column(scale=1):
                     image_input = gr.Image(
@@ -213,6 +244,7 @@ with gr.Blocks(theme=gr.themes.Soft(), css=css) as demo:
                         label="Upload Image",
                         height=350
                     )
+
                     # Load initial history
                     history_state = gr.State([])
                     with gr.Row():
@@ -251,18 +283,19 @@ with gr.Blocks(theme=gr.themes.Soft(), css=css) as demo:
                 outputs=[heatmap_gallery, predicted_label, confidence_score, all_scores_label, *history_slots, history_state]
             )
             
-         # --- Live IP Webcam ---
+        # ========== TAB 2: LIVE CAMERA ==========
         with gr.TabItem("Live IP Webcam"):
             json_out_live = gr.JSON(label="Prediction (top class + confidence %)")
             label_out_live = gr.Label(num_top_classes=3, label="Top-3 probabilities")
             live_feed = gr.Gallery(label="Live Feed",
-                                   height=500,     # adjust to fit your page
+                                   height=500,     # Adjust to fit your page
                                    columns=1       # 1 image per row
                                    )
             motion_out = gr.JSON(label="Motion Info")
             start_btn = gr.Button("Start Live Feed")
             stop_btn  = gr.Button("Stop Live Feed")
 
+            # Start live feed (motion-triggered)
             start_btn.click(
                 live_ipcam_generator,
                 inputs=[],
@@ -271,5 +304,6 @@ with gr.Blocks(theme=gr.themes.Soft(), css=css) as demo:
 
     # Stop button can just close the browser tab or set a global stop flag
 
+# ---- RUN THE APP ----
 if __name__ == "__main__":
     demo.launch(inbrowser=True)

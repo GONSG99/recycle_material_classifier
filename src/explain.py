@@ -9,6 +9,7 @@ from pathlib import Path
 
 
 def generate_gradcam(img, model, device, class_names, threshold=0.5):
+
     """
     Generate Grad-CAM for a given image and model.
 
@@ -25,6 +26,7 @@ def generate_gradcam(img, model, device, class_names, threshold=0.5):
         pred_label (str): Predicted class label.
         confidence (float): Probability of predicted class.
     """
+
     # Load transforms
     _, eval_transforms = build_transforms(224)
     
@@ -84,6 +86,7 @@ def generate_gradcam(img, model, device, class_names, threshold=0.5):
 
 
 if __name__ == "__main__":
+    
     # Load labels
     with open("models/labels.json", "r") as f:
         idx2name = {int(k): v for k, v in json.load(f).items()}
